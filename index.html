@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrewFocus — Coffee Timer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: #0E0805;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Sans', sans-serif;
+      padding: 20px;
+    }
+
+    @keyframes fadeIn  { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeOut { from { opacity:1; transform:translateY(0); }    to { opacity:0; transform:translateY(-16px); } }
+    @keyframes popIn   { from { opacity:0; transform:scale(0.82); }      to { opacity:1; transform:scale(1); } }
+    @keyframes bobble  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+    @keyframes float   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    @keyframes pulseBtn{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+    @keyframes steamRise {
+      0%   { transform:translateY(0) scaleX(1);    opacity:0.5; }
+      50%  { transform:translateY(-10px) scaleX(1.15); opacity:0.3; }
+      100% { transform:translateY(-22px) scaleX(0.8);  opacity:0; }
+    }
+    @keyframes alarmPulse {
+      0%,100% { box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(196,135,74,0.15); }
+      50%     { box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 44px 12px rgba(196,135,74,0.28), 0 0 0 2px rgba(196,135,74,0.55); }
+    }
+
+    /* ═══════════════════════════
+       LOGIN SCREEN
+    ═══════════════════════════ */
+    #login-screen {
+      width: 100%;
+      max-width: 460px;
+      animation: fadeIn 0.6s ease;
+    }
+
+    .login-card {
+      background: linear-gradient(160deg, #2C1A0E 0%, #1A0F07 100%);
+      border-radius: 24px;
+      border: 1px solid rgba(196,135,74,0.22);
+      padding: 48px 40px 40px;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .login-barista-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .login-speech {
+      background: #EDE0C8;
+      border-radius: 14px 14px 14px 4px;
+      padding: 13px 18px;
+      font-size: 13.5px;
+      color: #2C1A0E;
+      line-height: 1.55;
+      max-width: 270px;
+      text-align: center;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.38);
+      margin-bottom: 12px;
+      position: relative;
+      animation: bobble 3.2s ease-in-out infinite;
+      min-height: 52px;
+      transition: all 0.3s ease;
+    }
+    .login-speech::after {
+      content: '';
+      position: absolute;
+      bottom: -9px;
+      left: 26px;
+      width: 0; height: 0;
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+      border-top: 9px solid #EDE0C8;
+    }
+
+    .login-form-group {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .login-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(196,135,74,0.25);
+      border-radius: 12px;
+      padding: 15px 18px;
+      color: #EDE0C8;
+      font-size: 16px;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      text-align: center;
+      letter-spacing: 0.3px;
+    }
+    .login-input::placeholder { color: rgba(237,224,200,0.28); }
+    .login-input:focus { border-color: #C4874A; background: rgba(196,135,74,0.07); }
+
+    .login-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #C4874A, #A06830);
+      border: none;
+      border-radius: 12px;
+      padding: 15px 20px;
+      color: #1A0F07;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      font-size: 15px;
+      cursor: pointer;
+      transition: filter 0.2s, transform 0.15s;
+    }
+    .login-btn:hover  { filter: brightness(1.1); transform: translateY(-1px); }
+    .login-btn:active { transform: scale(0.98); }
+    .login-btn:disabled { opacity: 0.32; cursor: not-allowed; transform: none; filter: none; }
+
+    .login-tagline {
+      font-size: 10.5px;
+      color: rgba(196,135,74,0.4);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    /* ═══════════════════════════
+       MAIN APP
+    ═══════════════════════════ */
+    #app {
+      display: none;
+      width: 100%;
+      max-width: 860px;
+      min-height: 600px;
+      background: linear-gradient(160deg, #2C1A0E 0%, #1A0F07 60%, #3A2010 100%);
+      border-radius: 22px;
+      grid-template-columns: 1fr 1px 1fr;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(196,135,74,0.15);
+    }
+    #app.visible { display: grid; animation: fadeIn 0.5s ease; }
+    #app.alarm   { animation: alarmPulse 0.95s ease-in-out infinite; }
+
+    .divider { background: rgba(196,135,74,0.2); }
+
+    /* LEFT */
+    #left-panel {
+      padding: 30px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .brand-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .brand { font-family: 'Playfair Display', serif; font-size: 22px; color: #C4874A; letter-spacing: 0.5px; line-height: 1; }
+    .brand span { font-style: italic; color: #EDE0C8; }
+    .brand-sub { font-size: 10px; color: rgba(196,135,74,0.45); letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+
+    .user-chip {
+      font-size: 11px;
+      color: rgba(196,135,74,0.75);
+      background: rgba(196,135,74,0.1);
+      border: 1px solid rgba(196,135,74,0.2);
+      border-radius: 20px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+    .user-chip:hover { background: rgba(196,135,74,0.18); color: #C4874A; }
+
+    .section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      color: rgba(196,135,74,0.6);
+      margin-bottom: 8px;
+    }
+
+    .coffee-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .coffee-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(196,135,74,0.12);
+      border-radius: 12px;
+      padding: 12px 10px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      text-align: center;
+      user-select: none;
+    }
+    .coffee-card:hover    { background: rgba(196,135,74,0.08); border-color: rgba(196,135,74,0.35); transform: translateY(-1px); }
+    .coffee-card.selected { background: rgba(196,135,74,0.15); border-color: #C4874A; }
+    .coffee-card.disabled { pointer-events: none; opacity: 0.5; }
+
+    .coffee-icon { font-size: 22px; margin-bottom: 4px; }
+    .coffee-name { font-size: 11.5px; color: #EDE0C8; font-weight: 500; }
+    .coffee-desc { font-size: 9.5px; color: rgba(237,224,200,0.4); margin-top: 2px; }
+
+    .timer-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .preset-btn {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(196,135,74,0.18);
+      border-radius: 8px;
+      padding: 6px 13px;
+      font-size: 12px;
+      color: #EDE0C8;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+    .preset-btn:hover  { background: rgba(196,135,74,0.12); border-color: rgba(196,135,74,0.4); }
+    .preset-btn.active { background: rgba(196,135,74,0.2); border-color: #C4874A; color: #C4874A; font-weight: 500; }
+    .preset-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .custom-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .custom-row label { font-size: 12px; color: rgba(237,224,200,0.5); }
+    .custom-row input {
+      width: 70px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(196,135,74,0.2);
+      border-radius: 8px;
+      padding: 6px 10px;
+      color: #EDE0C8;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .custom-row input:focus    { border-color: #C4874A; }
+    .custom-row input:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #start-btn {
+      background: linear-gradient(135deg, #C4874A, #A06830);
+      border: none;
+      border-radius: 12px;
+      padding: 14px 20px;
+      color: #1A0F07;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: filter 0.2s, transform 0.15s;
+      width: 100%;
+    }
+    #start-btn:hover  { filter: brightness(1.12); transform: translateY(-1px); }
+    #start-btn:active { transform: scale(0.98); }
+    #start-btn:disabled { opacity: 0.38; cursor: not-allowed; transform: none; filter: none; }
+
+    /* RIGHT */
+    #right-panel {
+      padding: 30px 26px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .clock-wrap { text-align: center; }
+    #clock-display {
+      font-family: 'Playfair Display', serif;
+      font-size: 56px;
+      color: #EDE0C8;
+      letter-spacing: 3px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+    #clock-sub {
+      font-size: 10.5px;
+      color: rgba(196,135,74,0.52);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 8px;
+    }
+
+    #stage { position: relative; width: 200px; height: 220px; }
+
+    #barista-speech {
+      position: absolute;
+      bottom: 214px;
+      right: -16px;
+      background: #EDE0C8;
+      border-radius: 12px 12px 2px 12px;
+      padding: 9px 13px;
+      font-size: 11px;
+      color: #2C1A0E;
+      max-width: 148px;
+      line-height: 1.5;
+      display: none;
+      z-index: 10;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.38);
+    }
+
+    #status-msg {
+      font-size: 12px;
+      color: rgba(196,135,74,0.62);
+      text-align: center;
+      min-height: 18px;
+      letter-spacing: 0.4px;
+    }
+
+    #stage-controls { display: none; gap: 10px; }
+
+    .ctrl-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(196,135,74,0.22);
+      border-radius: 9px;
+      padding: 8px 20px;
+      color: #EDE0C8;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .ctrl-btn:hover { background: rgba(196,135,74,0.14); }
+
+    #paused-banner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(196,135,74,0.12);
+      border: 1px solid rgba(196,135,74,0.4);
+      border-radius: 10px;
+      padding: 9px 22px;
+      font-size: 12px;
+      color: #C4874A;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      z-index: 20;
+      white-space: nowrap;
+      backdrop-filter: blur(6px);
+    }
+
+    /* Progress ring */
+    #progress-track { fill: none; stroke: rgba(196,135,74,0.1); stroke-width: 3.5; }
+    #progress-bar {
+      fill: none;
+      stroke: #C4874A;
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      transform: rotate(-90deg);
+      transform-origin: 100px 110px;
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    .steam-path { animation: steamRise 2.5s ease-in-out infinite; }
+    .steam-path:nth-child(2) { animation-delay: 0.85s; }
+    .steam-path:nth-child(3) { animation-delay: 1.7s; }
+
+    /* MODAL */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(8,4,2,0.9);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    #modal-overlay.show { display: flex; }
+
+    .modal-box {
+      background: linear-gradient(160deg, #2C1A0E, #1A0F07);
+      border: 1px solid rgba(196,135,74,0.3);
+      border-radius: 22px;
+      padding: 44px 38px;
+      max-width: 440px;
+      width: 92%;
+      text-align: center;
+      box-shadow: 0 50px 100px rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .modal-icon  { font-size: 54px; animation: float 2.2s ease-in-out infinite; }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 27px; color: #C4874A; line-height: 1.2; }
+    .modal-sub   { font-size: 14px; color: rgba(237,224,200,0.6); line-height: 1.75; }
+    .modal-sub strong { color: #EDE0C8; }
+
+    .modal-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; margin-top: 4px; }
+    .modal-btn {
+      background: rgba(196,135,74,0.1);
+      border: 1px solid rgba(196,135,74,0.28);
+      border-radius: 10px;
+      padding: 11px 16px;
+      color: #EDE0C8;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: 1;
+      min-width: 128px;
+    }
+    .modal-btn:hover  { background: rgba(196,135,74,0.2); border-color: #C4874A; }
+    .modal-btn.primary { background: #C4874A; color: #1A0F07; font-weight: 500; border-color: #C4874A; }
+    .modal-btn.primary:hover { filter: brightness(1.08); }
+
+    /* Floating stop-alarm button */
+    #stop-alarm-btn {
+      display: none;
+      position: fixed;
+      bottom: 26px;
+      right: 26px;
+      background: #C4874A;
+      border: none;
+      border-radius: 50px;
+      padding: 13px 26px;
+      color: #1A0F07;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      font-size: 13px;
+      cursor: pointer;
+      z-index: 400;
+      box-shadow: 0 6px 28px rgba(196,135,74,0.55);
+      animation: pulseBtn 1s ease-in-out infinite;
+    }
+
+    @media (max-width: 640px) {
+      #app { grid-template-columns: 1fr; grid-template-rows: auto 1px auto; }
+      .divider { height: 1px; width: 100%; }
+      #left-panel, #right-panel { padding: 22px 18px; }
+      #clock-display { font-size: 44px; }
+      .login-card { padding: 36px 24px 32px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════
+     LOGIN SCREEN
+═══════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+
+    <div class="login-barista-wrap">
+      <div class="login-speech" id="login-speech">
+        Hi there! ☕ Can I get your name for the order?
+      </div>
+
+      <!-- Big friendly barista SVG -->
+      <svg viewBox="0 0 110 120" width="110" height="120" xmlns="http://www.w3.org/2000/svg">
+        <!-- Chef hat -->
+        <rect x="28" y="16" width="54" height="10" rx="3.5" fill="#F0E8D8"/>
+        <rect x="36" y="5"  width="38" height="15" rx="6"   fill="#F0E8D8"/>
+        <!-- Head -->
+        <circle cx="55" cy="48" r="26" fill="#EAD5B0"/>
+        <!-- Cheeks -->
+        <ellipse cx="40" cy="55" rx="6"  ry="4"  fill="#E8A090" opacity="0.32"/>
+        <ellipse cx="70" cy="55" rx="6"  ry="4"  fill="#E8A090" opacity="0.32"/>
+        <!-- Eyes -->
+        <circle cx="46" cy="46" r="4"   fill="#2C1A0E"/>
+        <circle cx="64" cy="46" r="4"   fill="#2C1A0E"/>
+        <circle cx="47.3" cy="44.5" r="1.4" fill="white"/>
+        <circle cx="65.3" cy="44.5" r="1.4" fill="white"/>
+        <!-- Smile -->
+        <path id="login-mouth" d="M44 57 Q55 66 66 57"
+          fill="none" stroke="#2C1A0E" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- Body -->
+        <rect x="24" y="74" width="62" height="44" rx="12" fill="#C4874A"/>
+        <!-- Apron -->
+        <path d="M34 78 L34 118 H76 L76 78 Z" fill="#EDE0C8" opacity="0.72"/>
+        <!-- Arms -->
+        <path d="M24 84 Q8  89 4  102" fill="none" stroke="#EAD5B0" stroke-width="7" stroke-linecap="round"/>
+        <path d="M86 84 Q102 89 106 102" fill="none" stroke="#EAD5B0" stroke-width="7" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <div class="login-form-group">
+      <input
+        type="text"
+        id="name-input"
+        class="login-input"
+        placeholder="Your name…"
+        maxlength="24"
+        autocomplete="off"
+        autocapitalize="words"
+        spellcheck="false"
+      />
+      <button class="login-btn" id="login-btn" disabled>
+        Let's brew some focus ☕
+      </button>
+    </div>
+
+    <div class="login-tagline">Study with intention · One brew at a time</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════
+     MAIN APP
+═══════════════════════════ -->
+<div id="app">
+
+  <!-- LEFT -->
+  <div id="left-panel">
+    <div class="brand-row">
+      <div>
+        <div class="brand">Brew<span>Focus</span></div>
+        <div class="brand-sub">Study with intention</div>
+      </div>
+      <div class="user-chip" id="user-chip" title="Switch user">
+        👤 <span id="user-name-tag"></span>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Choose your brew</div>
+      <div class="coffee-grid">
+        <div class="coffee-card selected"
+          data-coffee="espresso" data-name="Espresso" data-icon="☕"
+          data-stages='["Grinding dark roast beans…","Tamping the portafilter…","Pulling a double shot…","Crema forming on top…"]'>
+          <div class="coffee-icon">☕</div>
+          <div class="coffee-name">Espresso</div>
+          <div class="coffee-desc">Bold & intense</div>
+        </div>
+        <div class="coffee-card"
+          data-coffee="latte" data-name="Latte" data-icon="🥛"
+          data-stages='["Grinding medium roast…","Pulling the espresso shot…","Steaming silky milk…","Pouring the rosette…"]'>
+          <div class="coffee-icon">🥛</div>
+          <div class="coffee-name">Latte</div>
+          <div class="coffee-desc">Smooth & milky</div>
+        </div>
+        <div class="coffee-card"
+          data-coffee="cappuccino" data-name="Cappuccino" data-icon="🍂"
+          data-stages='["Grinding fine beans…","Extracting the shot…","Frothing thick foam…","Dusting with cocoa…"]'>
+          <div class="coffee-icon">🍂</div>
+          <div class="coffee-name">Cappuccino</div>
+          <div class="coffee-desc">Frothy & warm</div>
+        </div>
+        <div class="coffee-card"
+          data-coffee="cold-brew" data-name="Cold Brew" data-icon="🧊"
+          data-stages='["Coarsely grinding beans…","Steeping in cold water…","Filtering slowly…","Pouring over ice…"]'>
+          <div class="coffee-icon">🧊</div>
+          <div class="coffee-name">Cold Brew</div>
+          <div class="coffee-desc">Cool & mellow</div>
+        </div>
+        <div class="coffee-card"
+          data-coffee="matcha" data-name="Matcha Latte" data-icon="🍵"
+          data-stages='["Sifting the matcha powder…","Whisking with hot water…","Steaming oat milk…","Pouring the green wave…"]'>
+          <div class="coffee-icon">🍵</div>
+          <div class="coffee-name">Matcha</div>
+          <div class="coffee-desc">Earthy & calm</div>
+        </div>
+        <div class="coffee-card"
+          data-coffee="mocha" data-name="Mocha" data-icon="🍫"
+          data-stages='["Melting dark chocolate…","Pulling the espresso…","Steaming velvety milk…","Drizzling cocoa…"]'>
+          <div class="coffee-icon">🍫</div>
+          <div class="coffee-name">Mocha</div>
+          <div class="coffee-desc">Rich & sweet</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Focus duration</div>
+      <div class="timer-presets">
+        <button class="preset-btn active" data-mins="25">25 min</button>
+        <button class="preset-btn" data-mins="45">45 min</button>
+        <button class="preset-btn" data-mins="60">1 hr</button>
+        <button class="preset-btn" data-mins="90">90 min</button>
+      </div>
+      <div class="custom-row">
+        <label>Custom:</label>
+        <input type="number" id="custom-mins" placeholder="e.g. 30" min="1" max="180" />
+        <label>min</label>
+      </div>
+    </div>
+
+    <button id="start-btn">Start brewing your focus</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- RIGHT -->
+  <div id="right-panel">
+    <div class="clock-wrap">
+      <div id="clock-display">25:00</div>
+      <div id="clock-sub">Ready to brew</div>
+    </div>
+
+    <div id="stage">
+      <svg viewBox="0 0 200 220" width="200" height="220" xmlns="http://www.w3.org/2000/svg">
+        <!-- Progress ring -->
+        <circle id="progress-track" cx="100" cy="110" r="80"/>
+        <circle id="progress-bar"  cx="100" cy="110" r="80"
+          stroke-dasharray="502.65" stroke-dashoffset="502.65"/>
+
+        <!-- Saucer -->
+        <ellipse cx="100" cy="162" rx="48" ry="8" fill="#B8A080" opacity="0.45"/>
+        <!-- Cup body -->
+        <path d="M62 128 Q62 158 100 158 Q138 158 138 128 L130 100 H70 Z" fill="#EDE0C8" opacity="0.93"/>
+        <!-- Cup rim -->
+        <ellipse cx="100" cy="100" rx="30" ry="5" fill="#D4C0A0" opacity="0.6"/>
+        <!-- Handle -->
+        <path d="M138 112 Q155 112 155 128 Q155 144 138 144"
+          fill="none" stroke="#C4874A" stroke-width="3.5" stroke-linecap="round"/>
+
+        <clipPath id="cupClip">
+          <path d="M64 128 Q64 156 100 156 Q136 156 136 128 L128 102 H72 Z"/>
+        </clipPath>
+
+        <!-- Liquids -->
+        <rect id="coffee-fill" x="64" y="102" width="72" height="54" fill="#3D1F0A"  clip-path="url(#cupClip)" opacity="0"/>
+        <rect id="matcha-fill" x="64" y="102" width="72" height="54" fill="#4A6E2A"  clip-path="url(#cupClip)" opacity="0"/>
+        <rect id="cold-fill"   x="64" y="102" width="72" height="54" fill="#1A2A3A"  clip-path="url(#cupClip)" opacity="0"/>
+        <!-- Foam -->
+        <rect id="foam-layer"  x="64" y="102" width="72" height="13" fill="#EDE0C8"  clip-path="url(#cupClip)" opacity="0"/>
+        <!-- Ice cubes -->
+        <g id="ice-group" clip-path="url(#cupClip)" opacity="0">
+          <rect x="70" y="126" width="14" height="14" rx="2" fill="#A8C8E0" opacity="0.7"/>
+          <rect x="90" y="130" width="12" height="12" rx="2" fill="#B8D4E8" opacity="0.6"/>
+          <rect x="108" y="124" width="16" height="16" rx="2" fill="#A0C0D8" opacity="0.65"/>
+        </g>
+        <!-- Latte art -->
+        <g id="latte-art" clip-path="url(#cupClip)" opacity="0">
+          <ellipse cx="100" cy="115" rx="24" ry="9" fill="#C4874A" opacity="0.45"/>
+          <path d="M100 107 Q110 115 100 123 Q90 115 100 107" fill="#EDE0C8" opacity="0.6"/>
+        </g>
+        <!-- Steam -->
+        <g id="steam-group" opacity="0">
+          <path class="steam-path" d="M82 98 Q79 86 82 74 Q85 62 82 50"
+            fill="none" stroke="#EDE0C8" stroke-width="2.2" stroke-linecap="round" opacity="0.45"/>
+          <path class="steam-path" d="M100 95 Q97 83 100 71 Q103 59 100 47"
+            fill="none" stroke="#EDE0C8" stroke-width="2.2" stroke-linecap="round" opacity="0.38"/>
+          <path class="steam-path" d="M118 98 Q115 86 118 74 Q121 62 118 50"
+            fill="none" stroke="#EDE0C8" stroke-width="2.2" stroke-linecap="round" opacity="0.32"/>
+        </g>
+
+        <!-- Barista -->
+        <g id="barista" transform="translate(126,30)">
+          <circle cx="16" cy="18" r="14" fill="#EAD5B0"/>
+          <circle id="eye-l" cx="11" cy="17" r="2.4" fill="#2C1A0E"/>
+          <circle id="eye-r" cx="21" cy="17" r="2.4" fill="#2C1A0E"/>
+          <circle cx="12"   cy="15.6" r="0.9" fill="white"/>
+          <circle cx="22"   cy="15.6" r="0.9" fill="white"/>
+          <path id="barista-mouth" d="M10 23 Q16 29 22 23"
+            fill="none" stroke="#2C1A0E" stroke-width="1.8" stroke-linecap="round"/>
+          <rect x="5"  y="6"  width="22" height="5.5" rx="2"   fill="#F0E8D8"/>
+          <rect x="9"  y="1"  width="14" height="8"   rx="3.5" fill="#F0E8D8"/>
+          <rect x="5"  y="32" width="22" height="24"  rx="6"   fill="#C4874A"/>
+          <path d="M9 35 L9 56 H23 L23 35 Z" fill="#EDE0C8" opacity="0.75"/>
+          <path id="barista-arm" d="M5 40 Q-4 43 -8 52"
+            fill="none" stroke="#EAD5B0" stroke-width="4.5" stroke-linecap="round"/>
+        </g>
+      </svg>
+
+      <div id="barista-speech"></div>
+    </div>
+
+    <div id="status-msg">Select a coffee and press start</div>
+
+    <div id="stage-controls" style="display:none; gap:10px;">
+      <button class="ctrl-btn" id="pause-btn">Pause</button>
+      <button class="ctrl-btn" id="reset-btn">Reset</button>
+    </div>
+
+    <div id="paused-banner">⏸ Paused</div>
+  </div>
+
+</div>
+
+<!-- SESSION MODAL -->
+<div id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-icon"  id="modal-icon">☕</div>
+    <div class="modal-title" id="modal-title">Your brew is ready!</div>
+    <div class="modal-sub"   id="modal-sub"></div>
+    <div class="modal-btns">
+      <button class="modal-btn" id="mb-crushed">Crushed it! 🎉</button>
+      <button class="modal-btn" id="mb-almost">Almost done 😤</button>
+      <button class="modal-btn" id="mb-progress">Made progress 📖</button>
+      <button class="modal-btn primary" id="mb-restart">New session ↺</button>
+    </div>
+  </div>
+</div>
+
+<!-- Floating stop alarm -->
+<button id="stop-alarm-btn">🔔 Stop alarm</button>
+
+<script>
+// ══════ STATE ══════
+const S = {
+  userName: '',
+  running: false,
+  paused: false,
+  total: 25 * 60,
+  remaining: 25 * 60,
+  selectedMins: 25,
+  interval: null,
+  stageInterval: null,
+  stageIndex: 0,
+  coffee: {
+    name:'Espresso', icon:'☕', type:'espresso',
+    stages:["Grinding dark roast beans…","Tamping the portafilter…","Pulling a double shot…","Crema forming on top…"]
+  },
+  alarmPlaying: false,
+  alarmLoopId: null,
+};
+
+// ══════ DOM ══════
+const $ = id => document.getElementById(id);
+const loginScreen  = $('login-screen');
+const nameInput    = $('name-input');
+const loginBtn     = $('login-btn');
+const loginSpeech  = $('login-speech');
+const loginMouth   = $('login-mouth');
+const app          = $('app');
+const userNameTag  = $('user-name-tag');
+const userChip     = $('user-chip');
+const clock        = $('clock-display');
+const clockSub     = $('clock-sub');
+const statusMsg    = $('status-msg');
+const stageCtrl    = $('stage-controls');
+const pauseBtn     = $('pause-btn');
+const resetBtn     = $('reset-btn');
+const startBtn     = $('start-btn');
+const modalOverlay = $('modal-overlay');
+const pausedBanner = $('paused-banner');
+const progressBar  = $('progress-bar');
+const coffeeFill   = $('coffee-fill');
+const matchaFill   = $('matcha-fill');
+const coldFill     = $('cold-fill');
+const foamLayer    = $('foam-layer');
+const iceGroup     = $('ice-group');
+const steamGroup   = $('steam-group');
+const latteArt     = $('latte-art');
+const baristaArm   = $('barista-arm');
+const baristaMouth = $('barista-mouth');
+const baristaSpeech= $('barista-speech');
+const stopAlarmBtn = $('stop-alarm-btn');
+
+const CIRC = 2 * Math.PI * 80;
+progressBar.style.strokeDasharray = CIRC;
+progressBar.style.strokeDashoffset = CIRC;
+
+// ══════ HELPERS ══════
+function cap(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
+function fmt(s)   { return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function a(el, k, v) { el.setAttribute(k, v); }
+
+let speechTimer = null;
+function showSpeech(msg, ms = 3500) {
+  baristaSpeech.textContent = msg;
+  baristaSpeech.style.display = 'block';
+  baristaSpeech.style.animation = 'none';
+  requestAnimationFrame(() => { baristaSpeech.style.animation = 'popIn 0.25s ease'; });
+  clearTimeout(speechTimer);
+  speechTimer = setTimeout(() => { baristaSpeech.style.display = 'none'; }, ms);
+}
+
+// ══════ LOGIN ══════
+const greetings = [
+  'Hi there! ☕ Can I get your name for the order?',
+  'Welcome! What name shall I put on your cup?',
+  'Hello! What\'s the name for your order today?',
+];
+loginSpeech.textContent = greetings[Math.floor(Math.random() * greetings.length)];
+
+nameInput.addEventListener('input', () => {
+  const v = nameInput.value.trim();
+  loginBtn.disabled = v.length < 1;
+  if (v.length > 0) {
+    loginSpeech.textContent = `"${cap(v)}" — love that name! Ready to focus? ☕`;
+    loginMouth.setAttribute('d', 'M38 57 Q55 68 72 57');
+  } else {
+    loginSpeech.textContent = greetings[0];
+    loginMouth.setAttribute('d', 'M44 57 Q55 66 66 57');
+  }
+});
+nameInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !loginBtn.disabled) loginBtn.click(); });
+
+loginBtn.addEventListener('click', () => {
+  const name = cap(nameInput.value.trim());
+  if (!name) return;
+  S.userName = name;
+  loginScreen.style.animation = 'fadeOut 0.38s ease forwards';
+  setTimeout(() => {
+    loginScreen.style.display = 'none';
+    app.classList.add('visible');
+    userNameTag.textContent = name;
+    setTimeout(() => showSpeech(`Here for you, ${name}! Pick your brew ☕`, 4500), 700);
+  }, 360);
+});
+
+userChip.addEventListener('click', () => {
+  if (S.running) { showSpeech('Finish your session first! 💪', 2500); return; }
+  app.classList.remove('visible');
+  loginScreen.style.display = '';
+  loginScreen.style.animation = 'fadeIn 0.4s ease';
+  nameInput.value = '';
+  loginBtn.disabled = true;
+  loginSpeech.textContent = greetings[0];
+  loginMouth.setAttribute('d', 'M44 57 Q55 66 66 57');
+});
+
+// ══════ AUDIO ALARM (Web Audio API) ══════
+let audioCtx = null;
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playChime() {
+  try {
+    const ctx = getCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    // 4-note ascending chime: C5 E5 G5 C6
+    const notes   = [523.25, 659.25, 783.99, 1046.5];
+    const offsets = [0, 0.32, 0.64, 0.96];
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + offsets[i]);
+      gain.gain.setValueAtTime(0, ctx.currentTime + offsets[i]);
+      gain.gain.linearRampToValueAtTime(0.3,   ctx.currentTime + offsets[i] + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offsets[i] + 1.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + offsets[i]);
+      osc.stop(ctx.currentTime  + offsets[i] + 1.15);
+    });
+    // Soft bell overtone
+    const bell  = ctx.createOscillator();
+    const bGain = ctx.createGain();
+    bell.type = 'triangle';
+    bell.frequency.setValueAtTime(1046.5, ctx.currentTime);
+    bGain.gain.setValueAtTime(0.18, ctx.currentTime);
+    bGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2.2);
+    bell.connect(bGain);
+    bGain.connect(ctx.destination);
+    bell.start(ctx.currentTime);
+    bell.stop(ctx.currentTime + 2.2);
+  } catch(e) { console.warn('Audio error:', e); }
+}
+
+function startAlarm() {
+  if (S.alarmPlaying) return;
+  S.alarmPlaying = true;
+  stopAlarmBtn.style.display = 'block';
+  playChime();
+  S.alarmLoopId = setInterval(() => { if (S.alarmPlaying) playChime(); }, 2400);
+}
+
+function stopAlarm() {
+  S.alarmPlaying = false;
+  clearInterval(S.alarmLoopId);
+  stopAlarmBtn.style.display = 'none';
+}
+
+stopAlarmBtn.addEventListener('click', stopAlarm);
+
+// ══════ COFFEE ANIMATION ══════
+function updateCoffeeAnim(pct) {
+  const t = S.coffee.type;
+  if (t === 'matcha') {
+    a(matchaFill,'opacity', Math.min(pct*2, 0.92)); a(coffeeFill,'opacity',0); a(coldFill,'opacity',0);
+  } else if (t === 'cold-brew') {
+    a(coldFill,'opacity', Math.min(pct*2, 0.88)); a(coffeeFill,'opacity',0); a(matchaFill,'opacity',0);
+  } else {
+    a(coffeeFill,'opacity', Math.min(pct*2, 0.92)); a(matchaFill,'opacity',0); a(coldFill,'opacity',0);
+  }
+  if (pct > 0.35) {
+    const fp = Math.min((pct-0.35)/0.3, 1);
+    a(foamLayer, 'opacity', t==='cold-brew' ? 0 : fp*0.88);
+    a(steamGroup,'opacity', t==='cold-brew' ? 0 : fp*0.85);
+    a(iceGroup,  'opacity', t==='cold-brew' ? fp*0.85 : 0);
+  }
+  if (pct > 0.68) a(latteArt,'opacity', Math.min((pct-0.68)*3.2, 0.85));
+}
+
+function resetCoffeeAnim() {
+  [coffeeFill,matchaFill,coldFill,foamLayer,steamGroup,latteArt,iceGroup].forEach(el=>a(el,'opacity',0));
+  progressBar.style.strokeDashoffset = CIRC;
+}
+
+function baristaWork(on) {
+  if (on) {
+    baristaArm.setAttribute('d','M5 40 Q-6 36 -10 40');
+    baristaMouth.setAttribute('d','M10 23 Q16 29 22 23');
+  } else {
+    baristaArm.setAttribute('d','M5 40 Q-4 43 -8 52');
+  }
+}
+function baristaHappy() { baristaMouth.setAttribute('d','M9 22 Q16 30 23 22'); }
+
+// ══════ NARRATION ══════
+function startNarration(stages, totalMs) {
+  S.stageIndex = 0;
+  const per = totalMs / stages.length;
+  statusMsg.textContent = stages[0];
+  showSpeech(stages[0], Math.min(per*0.85, 4200));
+  baristaWork(true);
+  S.stageInterval = setInterval(() => {
+    if (S.paused) return;
+    S.stageIndex = Math.min(S.stageIndex+1, stages.length-1);
+    statusMsg.textContent = stages[S.stageIndex];
+    showSpeech(stages[S.stageIndex], Math.min(per*0.85, 4200));
+  }, per);
+}
+function stopNarration() { clearInterval(S.stageInterval); S.stageInterval = null; }
+
+// ══════ COFFEE CARDS ══════
+document.querySelectorAll('.coffee-card').forEach(card => {
+  card.addEventListener('click', () => {
+    if (S.running) return;
+    document.querySelectorAll('.coffee-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    S.coffee = { name:card.dataset.name, icon:card.dataset.icon, type:card.dataset.coffee, stages:JSON.parse(card.dataset.stages) };
+    showSpeech(`Great choice, ${S.userName}! ${card.dataset.icon}`, 2200);
+  });
+});
+
+// ══════ PRESETS ══════
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (S.running) return;
+    document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    S.selectedMins = parseInt(btn.dataset.mins);
+    $('custom-mins').value = '';
+    S.remaining = S.selectedMins * 60;
+    clock.textContent = fmt(S.remaining);
+  });
+});
+$('custom-mins').addEventListener('input', function() {
+  const v = parseInt(this.value);
+  if (v>=1 && v<=180) {
+    document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+    S.selectedMins = v; S.remaining = v*60; clock.textContent = fmt(S.remaining);
+  }
+});
+
+// ══════ START ══════
+startBtn.addEventListener('click', () => {
+  if (S.running) return;
+  try { getCtx().resume(); } catch(e) {}
+
+  S.total = S.selectedMins * 60;
+  S.remaining = S.total;
+  S.running = true; S.paused = false;
+
+  clock.textContent = fmt(S.remaining);
+  progressBar.style.strokeDashoffset = CIRC;
+  resetCoffeeAnim();
+
+  startBtn.disabled = true;
+  document.querySelectorAll('.coffee-card').forEach(c=>c.classList.add('disabled'));
+  document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=true);
+  $('custom-mins').disabled = true;
+  stageCtrl.style.display = 'flex';
+
+  clockSub.textContent = 'Brewing your focus…';
+  showSpeech(`Let's go, ${S.userName}! 🔥`, 3000);
+  startNarration(S.coffee.stages, S.total*1000);
+
+  S.interval = setInterval(() => {
+    if (S.paused) return;
+    S.remaining--;
+    clock.textContent = fmt(S.remaining);
+    progressBar.style.strokeDashoffset = CIRC * (S.remaining/S.total);
+    updateCoffeeAnim(1 - S.remaining/S.total);
+
+    const half = Math.floor(S.total*0.5);
+    const qtr  = Math.floor(S.total*0.25);
+    if (S.remaining===half) showSpeech(`Halfway there, ${S.userName}! ✨`, 3500);
+    if (S.remaining===qtr)  showSpeech('Almost ready… just like your focus 💪', 3500);
+    if (S.remaining===60)   showSpeech('One minute left! Final touches… ⏳', 4000);
+    if (S.remaining<=0)     finishSession();
+  }, 1000);
+});
+
+// ══════ PAUSE ══════
+pauseBtn.addEventListener('click', () => {
+  if (!S.running) return;
+  S.paused = !S.paused;
+  pauseBtn.textContent = S.paused ? 'Resume' : 'Pause';
+  pausedBanner.style.display = S.paused ? 'block' : 'none';
+  clockSub.textContent = S.paused ? 'Paused ⏸' : 'Brewing your focus…';
+  if (S.paused) {
+    showSpeech(`Taking a break, ${S.userName}? Cup's staying warm ☕`, 5000);
+    baristaWork(false);
+  } else {
+    showSpeech(`Back at it, ${S.userName}! 💪`, 2500);
+    baristaWork(true);
+  }
+});
+
+// ══════ RESET ══════
+resetBtn.addEventListener('click', resetSession);
+
+function resetSession() {
+  clearInterval(S.interval); stopNarration(); stopAlarm();
+  S.running = false; S.paused = false;
+  S.remaining = S.selectedMins * 60;
+  clock.textContent = fmt(S.remaining);
+  resetCoffeeAnim();
+  progressBar.style.strokeDashoffset = CIRC;
+  startBtn.disabled = false;
+  document.querySelectorAll('.coffee-card').forEach(c=>c.classList.remove('disabled'));
+  document.querySelectorAll('.preset-btn').forEach(b=>b.disabled=false);
+  $('custom-mins').disabled = false;
+  stageCtrl.style.display = 'none';
+  pauseBtn.textContent = 'Pause';
+  pausedBanner.style.display = 'none';
+  clockSub.textContent = 'Ready to brew';
+  statusMsg.textContent = 'Select a coffee and press start';
+  baristaWork(false);
+  app.classList.remove('alarm');
+  baristaSpeech.style.display = 'none';
+}
+
+// ══════ FINISH ══════
+function finishSession() {
+  clearInterval(S.interval); stopNarration();
+  S.running = false;
+  app.classList.add('alarm');
+  baristaHappy(); baristaWork(false);
+  startAlarm();
+
+  if (typeof Notification!=='undefined' && Notification.permission==='granted') {
+    new Notification(`${S.coffee.name} is ready, ${S.userName}!`, {
+      body: `Your ${S.selectedMins}-min focus session is done. How did studying go?`
+    });
+  }
+
+  $('modal-icon').textContent  = S.coffee.icon;
+  $('modal-title').textContent = `${S.coffee.name} is ready, ${S.userName}!`;
+  $('modal-sub').innerHTML     =
+    `The barista just finished your <strong>${S.coffee.name}</strong>.<br>
+     Your <strong>${S.selectedMins}-min</strong> focus session is complete.<br><br>
+     How did studying go today?`;
+  modalOverlay.classList.add('show');
+  clockSub.textContent  = 'Done! ✓';
+  statusMsg.textContent = `${S.coffee.name} is served, ${S.userName}!`;
+}
+
+// ══════ MODAL ══════
+$('mb-crushed').addEventListener('click',  () => closeModal('You absolutely crushed it! 🎉'));
+$('mb-almost').addEventListener('click',   () => closeModal('Almost there — great effort!'));
+$('mb-progress').addEventListener('click', () => closeModal('Progress is progress! 📖'));
+$('mb-restart').addEventListener('click',  () => closeModal(null));
+
+function closeModal(msg) {
+  modalOverlay.classList.remove('show');
+  app.classList.remove('alarm');
+  stopAlarm();
+  if (msg) showSpeech(`${msg} See you next session, ${S.userName} 🌟`, 5000);
+  resetSession();
+}
+
+// ══════ VISIBILITY API ══════
+document.addEventListener('visibilitychange', () => {
+  if (!S.running) return;
+  if (document.hidden && !S.paused) {
+    S.paused = true;
+    pauseBtn.textContent = 'Resume';
+    pausedBanner.style.display = 'block';
+    clockSub.textContent = 'Paused — tab away ⏸';
+  }
+  if (!document.hidden && S.paused && pauseBtn.textContent==='Resume') {
+    showSpeech(`Welcome back, ${S.userName}! Tap Resume to continue ☕`, 5000);
+    clockSub.textContent = 'Paused — click Resume ⏸';
+  }
+});
+
+// ══════ NOTIFICATIONS ══════
+if (typeof Notification!=='undefined' && Notification.permission==='default') {
+  Notification.requestPermission();
+}
+
+// ══════ INIT ══════
+clock.textContent = fmt(S.remaining);
+baristaWork(false);
+</script>
+</body>
+</html>
